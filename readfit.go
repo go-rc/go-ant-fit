@@ -160,7 +160,6 @@ func readFit(filename string) {
         return
     }
 
-    readRecords
     fmt.Printf("%s: proto %d profile %d data %d\n", filename, fdata.proto,
         fdata.profile, fdata.datasize)
 }
