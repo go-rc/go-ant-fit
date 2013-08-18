@@ -11,12 +11,6 @@ import (
     "os"
 )
 
-type FitData struct {
-    proto byte
-    profile uint16
-    datasize uint32
-}
-
 func addCRC(crc uint16, val byte) uint16 {
     lookup := [16]uint16{
         0x0000, 0xcc01, 0xd801, 0x1400, 0xf001, 0x3c00, 0x2800, 0xe401,
@@ -68,6 +62,95 @@ func checkCRC(rdr io.Reader, data []byte) error {
     return nil
 }
 
+type FitData struct {
+    filename string
+    rdr io.Reader
+
+    proto byte
+    profile uint16
+    datasize uint32
+}
+
+func (fdata *FitData) open(filename string) error {
+    file, err := os.Open(filename)
+    if err != nil {
+        return errors.New(fmt.Sprintf("Cannot open \"%s\"\n", filename))
+    }
+    defer file.Close()
+
+    fdata.filename = filename
+    fdata.rdr = bufio.NewReader(file)
+
+    const minHeaderLen byte = 12
+
+    buf := make([]byte, minHeaderLen)
+
+    n, err := fdata.rdr.Read(buf)
+    if err != nil {
+        return err
+    } else if n != int(minHeaderLen) {
+        errfmt := "Tried to read %d byte header, only read %d bytes"
+        return errors.New(fmt.Sprintf(errfmt, minHeaderLen, n))
+    }
+
+    size := buf[0]
+
+    needCRC := size == minHeaderLen + 2
+    if size != minHeaderLen && !needCRC {
+        return errors.New(fmt.Sprintf("Unexpected header size %d", size))
+    }
+
+    // verify that the ASCII signature is correct
+    signature := []byte(".FIT")
+    for i := 0; i < 4; i++ {
+        if buf[8 + i] != signature[i] {
+            errfmt := "Bad signature char #%d: '%c' should be '%c'\n"
+            return errors.New(fmt.Sprintf(errfmt, i, buf[8 + i],
+                signature[i]))
+        }
+    }
+
+    // verify that the CRC is correct (if present)
+    if needCRC {
+        err = checkCRC(fdata.rdr, buf)
+        if err != nil {
+            return err
+        }
+    }
+
+    fdata.proto = buf[1]
+    fdata.profile = to_uint16(buf[2:4])
+    fdata.datasize = to_uint32(buf[4:9])
+
+    return nil
+}
+
+func readFit(filename string) error {
+    fdata := new(FitData)
+
+    err := fdata.open(filename)
+    if err != nil {
+        return err
+    }
+
+    fmt.Printf("%s: proto %d profile %d data %d\n", fdata.filename,
+        fdata.proto, fdata.profile, fdata.datasize)
+
+    return nil
+}
+
+func to_uint16(data []byte) (ret uint16) {
+    buf := bytes.NewBuffer(data)
+    binary.Read(buf, binary.LittleEndian, &ret)
+    return
+}
+
+func to_uint32(data []byte) (ret uint32) {
+    buf := bytes.NewBuffer(data)
+    binary.Read(buf, binary.LittleEndian, &ret)
+    return
+}
+
 func processArgs() (bool, []string) {
     usage := false
 
@@ -97,85 +180,6 @@ func processArgs() (bool, []string) {
     return *verbosep, files
 }
 
-func readHeader(rdr io.Reader) (*FitData, error) {
-    const minHeaderLen byte = 12
-
-    buf := make([]byte, minHeaderLen)
-
-    n, err := rdr.Read(buf)
-    if err != nil {
-        return nil, err
-    } else if n != int(minHeaderLen) {
-        errfmt := "Tried to read %d byte header, only read %d bytes"
-        return nil, errors.New(fmt.Sprintf(errfmt, minHeaderLen, n))
-    }
-
-    size := buf[0]
-
-    needCRC := size == minHeaderLen + 2
-    if size != minHeaderLen && !needCRC {
-        return nil, errors.New(fmt.Sprintf("Unexpected header size %d", size))
-    }
-
-    // verify that the ASCII signature is correct
-    signature := []byte(".FIT")
-    for i := 0; i < 4; i++ {
-        if buf[8 + i] != signature[i] {
-            errfmt := "Bad signature char #%d: '%c' should be '%c'\n"
-            return nil, errors.New(fmt.Sprintf(errfmt, i, buf[8 + i],
-                signature[i]))
-        }
-    }
-
-    // verify that the CRC is correct (if present)
-    if needCRC {
-        err = checkCRC(rdr, buf)
-        if err != nil {
-            return nil, err
-        }
-    }
-
-    fdata := new(FitData)
-
-    fdata.proto = buf[1]
-    fdata.profile = to_uint16(buf[2:4])
-    fdata.datasize = to_uint32(buf[4:9])
-
-    return fdata, nil
-}
-
-func readFit(filename string) {
-    file, err := os.Open(filename)
-    if err != nil {
-        fmt.Printf("Cannot open \"%s\"\n", filename)
-        return
-    }
-    defer file.Close()
-
-    rdr := bufio.NewReader(file)
-
-    fdata, err := readHeader(rdr)
-    if err != nil {
-        fmt.Printf("Cannot read %s: %s\n", filename, err)
-        return
-    }
-
-    fmt.Printf("%s: proto %d profile %d data %d\n", filename, fdata.proto,
-        fdata.profile, fdata.datasize)
-}
-
-func to_uint16(data []byte) (ret uint16) {
-    buf := bytes.NewBuffer(data)
-    binary.Read(buf, binary.LittleEndian, &ret)
-    return
-}
-
-func to_uint32(data []byte) (ret uint32) {
-    buf := bytes.NewBuffer(data)
-    binary.Read(buf, binary.LittleEndian, &ret)
-    return
-}
-
 func main() {
     verbose, files := processArgs()
 
@@ -184,6 +188,9 @@ func main() {
     }
 
     for _, f := range files {
-        readFit(f)
+        err := readFit(f)
+        if err != nil {
+            fmt.Printf("!! Cannot read %s: %s\n", f, err)
+        }
     }
 }
