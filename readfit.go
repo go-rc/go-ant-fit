@@ -145,7 +145,7 @@ func (msg *MsgFileId) name() string {
     return "file_id"
 }
 
-func createMsgFileId(data []byte) (*MsgFileId, error) {
+func NewMsgFileId(data []byte) (*MsgFileId, error) {
     const explen int = 15
 
     if len(data) != explen {
@@ -161,6 +161,118 @@ func createMsgFileId(data []byte) (*MsgFileId, error) {
     msg.serial_number = to_uint32(data[5:9])
     msg.time_created = to_uint32(data[9:13])
     msg.number = to_uint16(data[13:])
+
+    return msg, nil
+}
+
+// event message
+
+type MsgEvent struct {
+    msgtype byte
+    manufacturer uint16
+    product uint16
+    serial_number uint32
+    time_created uint32
+    number uint16
+}
+
+func (msg *MsgEvent) name() string {
+    return "file_id"
+}
+
+func NewMsgEvent(data []byte) (*MsgEvent, error) {
+    const explen int = 15
+
+    if len(data) != explen {
+        errfmt := "Event message should be %d bytes, not %d"
+        return nil, errors.New(fmt.Sprintf(errfmt, explen, len(data)))
+    }
+
+    msg := new(MsgEvent)
+
+    msg.msgtype = data[0]
+    msg.manufacturer = to_uint16(data[1:3])
+    msg.product = to_uint16(data[3:5])
+    msg.serial_number = to_uint32(data[5:9])
+    msg.time_created = to_uint32(data[9:13])
+    msg.number = to_uint16(data[13:])
+
+    return msg, nil
+}
+
+// software message
+
+type MsgSoftware struct {
+    message_index uint16
+    version uint16
+    part_number string
+}
+
+func (msg *MsgSoftware) name() string {
+    return "software"
+}
+
+func NewMsgSoftware(data []byte) (*MsgSoftware, error) {
+    const minlen int = 5
+
+    if len(data) < minlen {
+        errfmt := "Software message should be at least %d bytes, not %d"
+        return nil, errors.New(fmt.Sprintf(errfmt, minlen, len(data)))
+    }
+
+    msg := new(MsgSoftware)
+
+    msg.message_index = to_uint16(data[0:2])
+    msg.version = to_uint16(data[2:4])
+    msg.part_number = to_string(data[4:])
+
+    return msg, nil
+}
+
+// file_creator message
+
+type MsgFileCreator struct {
+    software_version uint16
+    hardware_version byte
+}
+
+func (msg *MsgFileCreator) name() string {
+    return "file_creator"
+}
+
+func NewMsgFileCreator(data []byte) (*MsgFileCreator, error) {
+    const explen int = 3
+
+    if len(data) < explen {
+        errfmt := "FileId message should be %d bytes, not %d"
+        return nil, errors.New(fmt.Sprintf(errfmt, explen, len(data)))
+    }
+
+    msg := new(MsgFileCreator)
+
+    msg.software_version = to_uint16(data[0:2])
+    msg.hardware_version = data[2]
+
+    return msg, nil
+}
+
+// unknown message
+
+type MsgUnknown struct {
+    global_num uint16
+    data []byte
+}
+
+func (msg *MsgUnknown) name() string {
+    return fmt.Sprintf("unknown#%d", msg.global_num)
+}
+
+func NewMsgUnknown(global_num uint16, data []byte) (*MsgUnknown, error) {
+    msg := new(MsgUnknown)
+
+    msg.global_num = global_num
+    msg.data = make([]byte, len(data))
+    copy(msg.data, data)
 
     return msg, nil
 }
@@ -250,13 +362,13 @@ func (ffile *FitFile) readData(def *FitDefinition,
             len(buf)))
     }
 
-    if (def.local_type == 0) {
-        return createMsgFileId(buf)
+    switch def.global_num {
+    case 0: return NewMsgFileId(buf)
+    //case 21: return NewMsgEvent(buf)
+    case 35: return NewMsgSoftware(buf)
+    case 49: return NewMsgFileCreator(buf)
+    default: return NewMsgUnknown(def.global_num, buf)
     }
-
-    fmt.Printf("fmt.readData UNIMPLEMENTED for def %d\n", def.local_type)
-
-    return nil, nil
 }
 
 func (ffile *FitFile) readDefinition(local_type byte,
@@ -299,9 +411,14 @@ func (ffile *FitFile) readDefinition(local_type byte,
             if def.fields[i].base_type >= 0 &&
                 int(def.fields[i].base_type) < len(base_type_names) {
                 type_name = base_type_names[def.fields[i].base_type]
-            } else {
-                type_name = fmt.Sprintf("?? %d ??", def.fields[i].base_type)
             }
+
+            if def.fields[i].num == 253 && def.fields[i].base_type == 6 {
+                type_name = "timestamp"
+            } else if def.fields[i].num == 254 {
+                type_name = "message_index"
+            }
+
             fmt.Printf("       :: num %d sz %d endian %v type %s\n",
                 def.fields[i].num, def.fields[i].size, def.fields[i].is_endian,
                 type_name)
@@ -372,7 +489,7 @@ func (ffile *FitFile) readMessage(verbose bool) (bool, error) {
         if err3 != nil {
             return false, err3
         }
-        fmt.Println("!! Discarding data ", data);
+        fmt.Printf("!! Discarding msg %s\n", data.name());
     }
 
     return true, nil
@@ -411,6 +528,14 @@ func to_uint16_endian(data []byte, order binary.ByteOrder) (ret uint16) {
     buf := bytes.NewBuffer(data)
     binary.Read(buf, order, &ret)
     return
+}
+
+func to_string(data[] byte) string {
+    if data[len(data) - 1] != 0 {
+        return string(data)
+    }
+
+    return string(data[:len(data)-1])
 }
 
 func to_uint32(data []byte) (ret uint32) {
