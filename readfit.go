@@ -89,7 +89,7 @@ type FitFile struct {
     datasize uint32
 
     defs []*FitDefinition
-    data []*FitData
+    data []FitMsg
 }
 
 type FitFieldDefinition struct {
@@ -124,8 +124,45 @@ func (s ByNum) Less(i, j int) bool {
     return s.Definitions[i].num < s.Definitions[j].num
 }
 
-type FitData struct {
-    values []*interface{}
+// message interface
+
+type FitMsg interface {
+    name() string
+}
+
+// file_id message
+
+type MsgFileId struct {
+    msgtype byte
+    manufacturer uint16
+    product uint16
+    serial_number uint32
+    time_created uint32
+    number uint16
+}
+
+func (msg *MsgFileId) name() string {
+    return "file_id"
+}
+
+func createMsgFileId(data []byte) (*MsgFileId, error) {
+    const explen int = 15
+
+    if len(data) != explen {
+        errfmt := "FileId message should be %d bytes, not %d"
+        return nil, errors.New(fmt.Sprintf(errfmt, explen, len(data)))
+    }
+
+    msg := new(MsgFileId)
+
+    msg.msgtype = data[0]
+    msg.manufacturer = to_uint16(data[1:3])
+    msg.product = to_uint16(data[3:5])
+    msg.serial_number = to_uint32(data[5:9])
+    msg.time_created = to_uint32(data[9:13])
+    msg.number = to_uint16(data[13:])
+
+    return msg, nil
 }
 
 func (ffile *FitFile) open(filename string) error {
@@ -180,7 +217,7 @@ func (ffile *FitFile) open(filename string) error {
     ffile.datasize = to_uint32(buf[4:9])
 
     ffile.defs = make([]*FitDefinition, 0)
-    ffile.data = make([]*FitData, 0)
+    ffile.data = make([]FitMsg, 0)
     return nil
 }
 
@@ -201,7 +238,7 @@ func (ffile *FitFile) findDefinition(local_type byte) (*FitDefinition, error) {
 }
 
 func (ffile *FitFile) readData(def *FitDefinition,
-    time_offset uint32, verbose bool) (*FitData, error) {
+    time_offset uint32, verbose bool) (FitMsg, error) {
 
     buf := make([]byte, def.total_bytes)
 
@@ -213,11 +250,13 @@ func (ffile *FitFile) readData(def *FitDefinition,
             len(buf)))
     }
 
-    data := new(FitData)
+    if (def.local_type == 0) {
+        return createMsgFileId(buf)
+    }
 
     fmt.Printf("fmt.readData UNIMPLEMENTED for def %d\n", def.local_type)
 
-    return data, nil
+    return nil, nil
 }
 
 func (ffile *FitFile) readDefinition(local_type byte,
