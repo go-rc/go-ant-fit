@@ -128,6 +128,7 @@ func (s ByNum) Less(i, j int) bool {
 
 type FitMsg interface {
     name() string
+    text() string
 }
 
 // file_id message
@@ -141,8 +142,35 @@ type MsgFileId struct {
     number uint16
 }
 
+func (msg *MsgFileId) msgtype_name() string {
+    switch msg.msgtype {
+    case 1: return "device";
+    case 2: return "settings";
+    case 3: return "sport";
+    case 4: return "activity";
+    case 5: return "workout";
+    case 6: return "course";
+    case 7: return "schedules";
+    case 9: return "weight";
+    case 10: return "totals";
+    case 11: return "goals";
+    case 14: return "blood_pressure";
+    case 15: return "monitoring";
+    case 20: return "activity_summary";
+    case 28: return "monitoring_daily";
+    default: return fmt.Sprintf("invalid#%d", msg.msgtype);
+
+    }
+}
+
 func (msg *MsgFileId) name() string {
     return "file_id"
+}
+
+func (msg *MsgFileId) text() string {
+    return fmt.Sprintf("file_id #%d msgtype %s mfct %d prod %d ser# %d time %d",
+        msg.number, msg.msgtype_name(), msg.manufacturer, msg.product,
+        msg.serial_number, msg.time_created)
 }
 
 func NewMsgFileId(data []byte) (*MsgFileId, error) {
@@ -168,34 +196,83 @@ func NewMsgFileId(data []byte) (*MsgFileId, error) {
 // event message
 
 type MsgEvent struct {
-    msgtype byte
-    manufacturer uint16
-    product uint16
-    serial_number uint32
-    time_created uint32
-    number uint16
+    timestamp uint32
+    event byte
+    event_type byte
+}
+
+func (msg *MsgEvent) event_name() string {
+    switch msg.event {
+    case 0: return "timer"
+    case 3: return "timer"
+    case 4: return "timer"
+    case 5: return "timer"
+    case 6: return "timer"
+    case 7: return "timer"
+    case 8: return "timer"
+    case 9: return "timer"
+    case 10: return "timer"
+    case 11: return "timer"
+    case 12: return "timer"
+    case 13: return "timer"
+    case 14: return "timer"
+    case 15: return "timer"
+    case 16: return "timer"
+    case 17: return "timer"
+    case 18: return "timer"
+    case 19: return "timer"
+    case 20: return "timer"
+    case 21: return "timer"
+    case 22: return "timer"
+    case 23: return "timer"
+    case 24: return "timer"
+    case 25: return "timer"
+    case 26: return "timer"
+    case 27: return "timer"
+    case 28: return "timer"
+    case 36: return "timer"
+    default: return fmt.Sprintf("unknown#%d", msg.event)
+    }
+}
+
+func (msg *MsgEvent) event_type_name() string {
+    switch msg.event_type {
+    case 0: return "start"
+    case 1: return "stop"
+    case 2: return "consecutive_deprecated"
+    case 3: return "marker"
+    case 4: return "stop_all"
+    case 5: return "begin_deprecated"
+    case 6: return "end_deprecated"
+    case 7: return "end_all_deprecated"
+    case 8: return "stop_disable"
+    case 9: return "stop_disable_all"
+    default: return fmt.Sprintf("unknown#%d", msg.event_type)
+    }
 }
 
 func (msg *MsgEvent) name() string {
-    return "file_id"
+    return "event"
+}
+
+func (msg *MsgEvent) text() string {
+    return fmt.Sprintf("event tstmp %d evt %s etyp %s", msg.timestamp,
+        msg.event_name(), msg.event_type_name())
 }
 
 func NewMsgEvent(data []byte) (*MsgEvent, error) {
-    const explen int = 15
+    const minlen int = 6
 
-    if len(data) != explen {
-        errfmt := "Event message should be %d bytes, not %d"
-        return nil, errors.New(fmt.Sprintf(errfmt, explen, len(data)))
+    if len(data) != minlen {
+        errfmt := "Event message should be at least %d bytes, not %d"
+        return nil, errors.New(fmt.Sprintf(errfmt, minlen, len(data)))
     }
 
     msg := new(MsgEvent)
 
-    msg.msgtype = data[0]
-    msg.manufacturer = to_uint16(data[1:3])
-    msg.product = to_uint16(data[3:5])
-    msg.serial_number = to_uint32(data[5:9])
-    msg.time_created = to_uint32(data[9:13])
-    msg.number = to_uint16(data[13:])
+    msg.timestamp = to_uint32(data[0:5])
+    msg.event = data[5]
+    msg.event_type = data[6]
 
     return msg, nil
 }
@@ -210,6 +287,11 @@ type MsgSoftware struct {
 
 func (msg *MsgSoftware) name() string {
     return "software"
+}
+
+func (msg *MsgSoftware) text() string {
+    return fmt.Sprintf("software msgidx %d vers %d part# %d", msg.message_index,
+        msg.version, msg.part_number)
 }
 
 func NewMsgSoftware(data []byte) (*MsgSoftware, error) {
@@ -240,6 +322,11 @@ func (msg *MsgFileCreator) name() string {
     return "file_creator"
 }
 
+func (msg *MsgFileCreator) text() string {
+    return fmt.Sprintf("file_creator soft %d hard %d", msg.software_version,
+        msg.hardware_version)
+}
+
 func NewMsgFileCreator(data []byte) (*MsgFileCreator, error) {
     const explen int = 3
 
@@ -264,6 +351,10 @@ type MsgUnknown struct {
 }
 
 func (msg *MsgUnknown) name() string {
+    return fmt.Sprintf("unknown#%d", msg.global_num)
+}
+
+func (msg *MsgUnknown) text() string {
     return fmt.Sprintf("unknown#%d", msg.global_num)
 }
 
@@ -489,7 +580,12 @@ func (ffile *FitFile) readMessage(verbose bool) (bool, error) {
         if err3 != nil {
             return false, err3
         }
-        fmt.Printf("!! Discarding msg %s\n", data.name());
+
+        if verbose {
+            fmt.Println("  data:", data.text())
+        }
+
+        ffile.data = append(ffile.data, data)
     }
 
     return true, nil
