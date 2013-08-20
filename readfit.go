@@ -9,7 +9,7 @@ import (
     "fmt"
     "io"
     "os"
-    "sort"
+    //"sort"
 )
 
 var base_type_names = [14]string{
@@ -173,7 +173,7 @@ func (msg *MsgFileId) text() string {
         msg.serial_number, msg.time_created)
 }
 
-func NewMsgFileId(data []byte) (*MsgFileId, error) {
+func NewMsgFileId(def *FitDefinition, data []byte) (*MsgFileId, error) {
     const explen int = 15
 
     if len(data) != explen {
@@ -183,12 +183,20 @@ func NewMsgFileId(data []byte) (*MsgFileId, error) {
 
     msg := new(MsgFileId)
 
-    msg.msgtype = data[0]
-    msg.manufacturer = to_uint16(data[1:3])
-    msg.product = to_uint16(data[3:5])
-    msg.serial_number = to_uint32(data[5:9])
-    msg.time_created = to_uint32(data[9:13])
-    msg.number = to_uint16(data[13:])
+    pos := 0
+    for i := 0; i < len(def.fields); i++ {
+        switch def.fields[i].num {
+        case 0: msg.msgtype = data[pos]; pos += 1
+        case 1: msg.manufacturer = to_uint16(data[pos:pos+2]); pos += 2
+        case 2: msg.product = to_uint16(data[pos:pos+2]); pos += 2
+        case 3: msg.serial_number = to_uint32(data[pos:pos+4]); pos += 4
+        case 4: msg.time_created = to_uint32(data[pos:pos+4]); pos += 4
+        case 5: msg.number = to_uint16(data[pos:pos+2]); pos += 2
+        default:
+            errmsg := fmt.Sprintf("Bad file_id field #%d", def.fields[i].num)
+            return nil, errors.New(errmsg)
+        }
+    }
 
     return msg, nil
 }
@@ -196,9 +204,12 @@ func NewMsgFileId(data []byte) (*MsgFileId, error) {
 // event message
 
 type MsgEvent struct {
-    timestamp uint32
     event byte
     event_type byte
+    data16 uint16
+    data uint32
+    event_group uint8
+    timestamp uint32
 }
 
 func (msg *MsgEvent) event_name() string {
@@ -260,19 +271,30 @@ func (msg *MsgEvent) text() string {
         msg.event_name(), msg.event_type_name())
 }
 
-func NewMsgEvent(data []byte) (*MsgEvent, error) {
+func NewMsgEvent(def *FitDefinition, data []byte) (*MsgEvent, error) {
     const minlen int = 6
 
-    if len(data) != minlen {
+    if len(data) < minlen {
         errfmt := "Event message should be at least %d bytes, not %d"
         return nil, errors.New(fmt.Sprintf(errfmt, minlen, len(data)))
     }
 
     msg := new(MsgEvent)
 
-    msg.timestamp = to_uint32(data[0:5])
-    msg.event = data[5]
-    msg.event_type = data[6]
+    pos := 0
+    for i := 0; i < len(def.fields); i++ {
+        switch def.fields[i].num {
+        case 0: msg.event = data[pos]; pos += 1
+        case 1: msg.event_type = data[pos]; pos += 1
+        case 2: msg.data16 = to_uint16(data[pos:pos+2]); pos += 2
+        case 3: msg.data = to_uint32(data[pos:pos+4]); pos += 4
+        case 4: msg.event_group = data[pos]
+        case 253: msg.timestamp = to_uint32(data[pos:pos+4]); pos += 4
+        default:
+            errmsg := fmt.Sprintf("Bad event field #%d", def.fields[i].num)
+            return nil, errors.New(errmsg)
+        }
+    }
 
     return msg, nil
 }
@@ -294,7 +316,7 @@ func (msg *MsgSoftware) text() string {
         msg.version, msg.part_number)
 }
 
-func NewMsgSoftware(data []byte) (*MsgSoftware, error) {
+func NewMsgSoftware(def *FitDefinition, data []byte) (*MsgSoftware, error) {
     const minlen int = 5
 
     if len(data) < minlen {
@@ -304,9 +326,17 @@ func NewMsgSoftware(data []byte) (*MsgSoftware, error) {
 
     msg := new(MsgSoftware)
 
-    msg.message_index = to_uint16(data[0:2])
-    msg.version = to_uint16(data[2:4])
-    msg.part_number = to_string(data[4:])
+    pos := 0
+    for i := 0; i < len(def.fields); i++ {
+        switch def.fields[i].num {
+        case 0: msg.message_index = to_uint16(data[pos:pos+2]); pos += 2
+        case 1: msg.version = to_uint16(data[pos:pos+2]); pos += 2
+        case 2: msg.part_number = to_string(data[pos:])
+        default:
+            errmsg := fmt.Sprintf("Bad software field #%d", def.fields[i].num)
+            return nil, errors.New(errmsg)
+        }
+    }
 
     return msg, nil
 }
@@ -327,7 +357,8 @@ func (msg *MsgFileCreator) text() string {
         msg.hardware_version)
 }
 
-func NewMsgFileCreator(data []byte) (*MsgFileCreator, error) {
+func NewMsgFileCreator(def *FitDefinition,
+    data []byte) (*MsgFileCreator, error) {
     const explen int = 3
 
     if len(data) < explen {
@@ -337,8 +368,17 @@ func NewMsgFileCreator(data []byte) (*MsgFileCreator, error) {
 
     msg := new(MsgFileCreator)
 
-    msg.software_version = to_uint16(data[0:2])
-    msg.hardware_version = data[2]
+
+    pos := 0
+    for i := 0; i < len(def.fields); i++ {
+        switch def.fields[i].num {
+        case 0: msg.software_version = to_uint16(data[pos:pos+2]); pos += 2
+        case 1: msg.hardware_version = data[pos]; pos += 1
+        default:
+            errmsg := fmt.Sprintf("Bad event field #%d", def.fields[i].num)
+            return nil, errors.New(errmsg)
+        }
+    }
 
     return msg, nil
 }
@@ -358,7 +398,8 @@ func (msg *MsgUnknown) text() string {
     return fmt.Sprintf("unknown#%d", msg.global_num)
 }
 
-func NewMsgUnknown(global_num uint16, data []byte) (*MsgUnknown, error) {
+func NewMsgUnknown(def *FitDefinition, data []byte,
+    global_num uint16) (*MsgUnknown, error) {
     msg := new(MsgUnknown)
 
     msg.global_num = global_num
@@ -454,11 +495,11 @@ func (ffile *FitFile) readData(def *FitDefinition,
     }
 
     switch def.global_num {
-    case 0: return NewMsgFileId(buf)
-    //case 21: return NewMsgEvent(buf)
-    case 35: return NewMsgSoftware(buf)
-    case 49: return NewMsgFileCreator(buf)
-    default: return NewMsgUnknown(def.global_num, buf)
+    case 0: return NewMsgFileId(def, buf)
+    case 21: return NewMsgEvent(def, buf)
+    case 35: return NewMsgSoftware(def, buf)
+    case 49: return NewMsgFileCreator(def, buf)
+    default: return NewMsgUnknown(def, buf, def.global_num)
     }
 }
 
@@ -491,7 +532,7 @@ func (ffile *FitFile) readDefinition(local_type byte,
         }
         def.total_bytes += uint16(def.fields[i].size)
     }
-    sort.Sort(ByNum{def.fields})
+    //sort.Sort(ByNum{def.fields})
 
     if verbose {
         fmt.Printf("  def: ltyp %v little_endian %v glbl %d\n",
