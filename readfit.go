@@ -9,6 +9,7 @@ import (
     "fmt"
     "io"
     "os"
+    "sort"
 )
 
 var base_type_names = [14]string{
@@ -106,29 +107,25 @@ type FitDefinition struct {
     total_bytes uint16
 }
 
+// interface and methods used to sort field definition list
+type Definitions []*FitFieldDefinition
+
+func (s Definitions) Len() int {
+    return len(s)
+}
+
+func (s Definitions) Swap(i, j int) {
+    s[i], s[j] = s[j], s[i]
+}
+
+type ByNum struct { Definitions }
+
 func (s ByNum) Less(i, j int) bool {
     return s.Definitions[i].num < s.Definitions[j].num
 }
 
 type FitData struct {
     values []*interface{}
-}
-
-type MsgFileId struct {
-    msgtype byte
-    manufacturer uint16
-    product uint16
-    serial_number uint32
-    time_created uint32
-    number uint16
-}
-
-func (msg *MsgFileId) name() string {
-    return "file_id"
-}
-
-func createFileId(data []byte) *MsgFileId {
-    return nil
 }
 
 func (ffile *FitFile) open(filename string) error {
@@ -252,6 +249,7 @@ func (ffile *FitFile) readDefinition(local_type byte,
         }
         def.total_bytes += uint16(def.fields[i].size)
     }
+    sort.Sort(ByNum{def.fields})
 
     if verbose {
         fmt.Printf("  def: ltyp %v little_endian %v glbl %d\n",
