@@ -173,6 +173,31 @@ func (msg *MsgFileId) text() string {
         msg.serial_number, msg.time_created)
 }
 
+func get_uint8_pos(data []byte, pos int) (uint8, int) {
+    return data[pos], pos
+}
+
+func get_uint16_pos(data []byte, pos int) (uint16, int) {
+    return to_uint16(data[pos:pos + 2]), pos + 2
+}
+
+func get_uint32_pos(data []byte, pos int) (uint32, int) {
+    return to_uint32(data[pos:pos + 4]), pos + 4
+}
+
+func get_string_pos(data []byte, pos int) (string, int) {
+    n := pos
+    for n < len(data) {
+        if data[n] == 0 {
+            n++
+            break
+        }
+        n++
+    }
+
+    return string(data[pos:n]), n
+}
+
 func NewMsgFileId(def *FitDefinition, data []byte) (*MsgFileId, error) {
     const explen int = 15
 
@@ -186,12 +211,12 @@ func NewMsgFileId(def *FitDefinition, data []byte) (*MsgFileId, error) {
     pos := 0
     for i := 0; i < len(def.fields); i++ {
         switch def.fields[i].num {
-        case 0: msg.msgtype = data[pos]; pos += 1
-        case 1: msg.manufacturer = to_uint16(data[pos:pos+2]); pos += 2
-        case 2: msg.product = to_uint16(data[pos:pos+2]); pos += 2
-        case 3: msg.serial_number = to_uint32(data[pos:pos+4]); pos += 4
-        case 4: msg.time_created = to_uint32(data[pos:pos+4]); pos += 4
-        case 5: msg.number = to_uint16(data[pos:pos+2]); pos += 2
+        case 0: msg.msgtype, pos = get_uint8_pos(data, pos)
+        case 1: msg.manufacturer, pos = get_uint16_pos(data, pos)
+        case 2: msg.product, pos = get_uint16_pos(data, pos)
+        case 3: msg.serial_number, pos = get_uint32_pos(data, pos)
+        case 4: msg.time_created, pos = get_uint32_pos(data, pos)
+        case 5: msg.number, pos = get_uint16_pos(data, pos)
         default:
             errmsg := fmt.Sprintf("Bad file_id field #%d", def.fields[i].num)
             return nil, errors.New(errmsg)
@@ -285,12 +310,12 @@ func NewMsgEvent(def *FitDefinition, data []byte) (*MsgEvent, error) {
     pos := 0
     for i := 0; i < len(def.fields); i++ {
         switch def.fields[i].num {
-        case 0: msg.event = data[pos]; pos += 1
-        case 1: msg.event_type = data[pos]; pos += 1
-        case 2: msg.data16 = to_uint16(data[pos:pos+2]); pos += 2
-        case 3: msg.data = to_uint32(data[pos:pos+4]); pos += 4
-        case 4: msg.event_group = data[pos]
-        case 253: msg.timestamp = to_uint32(data[pos:pos+4]); pos += 4
+        case 0: msg.event, pos = get_uint8_pos(data, pos)
+        case 1: msg.event_type, pos = get_uint8_pos(data, pos)
+        case 2: msg.data16, pos = get_uint16_pos(data, pos)
+        case 3: msg.data, pos = get_uint32_pos(data, pos)
+        case 4: msg.event_group, pos = get_uint8_pos(data, pos)
+        case 253: msg.timestamp, pos = get_uint32_pos(data, pos)
         default:
             errmsg := fmt.Sprintf("Bad event field #%d", def.fields[i].num)
             return nil, errors.New(errmsg)
@@ -330,9 +355,9 @@ func NewMsgSoftware(def *FitDefinition, data []byte) (*MsgSoftware, error) {
     pos := 0
     for i := 0; i < len(def.fields); i++ {
         switch def.fields[i].num {
-        case 0: msg.message_index = to_uint16(data[pos:pos+2]); pos += 2
-        case 1: msg.version = to_uint16(data[pos:pos+2]); pos += 2
-        case 2: msg.part_number = to_string(data[pos:])
+        case 0: msg.message_index, pos = get_uint16_pos(data, pos)
+        case 1: msg.version, pos = get_uint16_pos(data, pos)
+        case 2: msg.part_number, pos = get_string_pos(data, pos)
         default:
             errmsg := fmt.Sprintf("Bad software field #%d", def.fields[i].num)
             return nil, errors.New(errmsg)
@@ -373,8 +398,8 @@ func NewMsgFileCreator(def *FitDefinition,
     pos := 0
     for i := 0; i < len(def.fields); i++ {
         switch def.fields[i].num {
-        case 0: msg.software_version = to_uint16(data[pos:pos+2]); pos += 2
-        case 1: msg.hardware_version = data[pos]; pos += 1
+        case 0: msg.software_version, pos = get_uint16_pos(data, pos)
+        case 1: msg.hardware_version, pos = get_uint8_pos(data, pos)
         default:
             errmsg := fmt.Sprintf("Bad event field #%d", def.fields[i].num)
             return nil, errors.New(errmsg)
