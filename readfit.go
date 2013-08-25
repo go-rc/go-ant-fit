@@ -409,6 +409,99 @@ func NewMsgFileCreator(def *FitDefinition,
     return msg, nil
 }
 
+// device info message
+
+type MsgDeviceInfo struct {
+    timestamp uint32
+    device_index byte
+    device_type byte
+    manufacturer uint16
+    serial_number uint32
+    product uint16
+    software_version uint16
+    hardware_version uint16
+    cum_operating_time uint32
+    battery_voltage uint32
+    battery_status uint32
+}
+
+func (msg *MsgDeviceInfo) device_type_name() string {
+    switch msg.device_type {
+    case 1: return "antfs"
+    case 11: return "bike_power"
+    case 12: return "environment_sensor_legacy"
+    case 15: return "multi_sport_speed_distance"
+    case 16: return "control"
+    case 17: return "fitness_equipment"
+    case 18: return "blood_pressure"
+    case 19: return "geocache_node"
+    case 20: return "light_electric_vehicle"
+    case 25: return "env_sensor"
+    case 119: return "weight_scale"
+    case 120: return "heart_rate"
+    case 121: return "bike_speed_cadence"
+    case 122: return "bike_cadence"
+    case 123: return "bike_speed"
+    case 124: return "stride_speed_distance"
+    default: return fmt.Sprintf("unknown#%d", msg.device_type)
+    }
+}
+
+func (msg *MsgDeviceInfo) name() string {
+    return "device_info"
+}
+
+func (msg *MsgDeviceInfo) text() string {
+    return fmt.Sprintf("device_info tstmp %d idx %d dtyp %s mfr %d ser# %d" +
+        " prod %d soft %d hard %d optime %d volt %d stat %d", msg.timestamp,
+        msg.device_index, msg.device_type_name(), msg.manufacturer,
+        msg.serial_number, msg.product, msg.software_version,
+        msg.hardware_version, msg.cum_operating_time, msg.battery_voltage,
+        msg.battery_status)
+}
+
+func NewMsgDeviceInfo(def *FitDefinition, data []byte) (*MsgDeviceInfo, error) {
+    const minlen int = 6
+
+    if len(data) < minlen {
+        errfmt := "Device info message should be at least %d bytes, not %d"
+        return nil, errors.New(fmt.Sprintf(errfmt, minlen, len(data)))
+    }
+
+    msg := new(MsgDeviceInfo)
+
+    pos := 0
+    for i := 0; i < len(def.fields); i++ {
+        switch def.fields[i].num {
+        case 0: msg.device_index, pos = get_uint8_pos(data, pos)
+        case 1: msg.device_type, pos = get_uint8_pos(data, pos)
+        case 2: msg.manufacturer, pos = get_uint16_pos(data, pos)
+        case 3: msg.serial_number, pos = get_uint32_pos(data, pos)
+        case 4: msg.product, pos = get_uint16_pos(data, pos)
+        case 5: msg.software_version, pos = get_uint16_pos(data, pos)
+        case 6: msg.hardware_version, pos = get_uint16_pos(data, pos)
+        case 7: msg.cum_operating_time, pos = get_uint32_pos(data, pos)
+        case 8: fmt.Printf("Ignoring device_info field #%d\n",
+            def.fields[i].num)
+        case 9: fmt.Printf("Ignoring device_info field #%d\n",
+            def.fields[i].num)
+        case 10: msg.battery_voltage, pos = get_uint32_pos(data, pos)
+        case 11: msg.battery_status, pos = get_uint32_pos(data, pos)
+        case 15: fmt.Printf("Ignoring device_info field #%d\n",
+            def.fields[i].num)
+        case 16: fmt.Printf("Ignoring device_info field #%d\n",
+            def.fields[i].num)
+        case 253: msg.timestamp, pos = get_uint32_pos(data, pos)
+        default:
+            errmsg := fmt.Sprintf("Bad device_info field #%d",
+                def.fields[i].num)
+            return nil, errors.New(errmsg)
+        }
+    }
+
+    return msg, nil
+}
+
 // unknown message
 
 type MsgUnknown struct {
@@ -523,6 +616,7 @@ func (ffile *FitFile) readData(def *FitDefinition,
     switch def.global_num {
     case 0: return NewMsgFileId(def, buf)
     case 21: return NewMsgEvent(def, buf)
+    case 23: return NewMsgDeviceInfo(def, buf)
     case 35: return NewMsgSoftware(def, buf)
     case 49: return NewMsgFileCreator(def, buf)
     default: return NewMsgUnknown(def, buf, def.global_num)
