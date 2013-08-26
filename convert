@@ -1,0 +1,7 @@
+#!/bin/sh
+
+DIR=../FitSDKRelease_7.10/java/com/garmin/fit
+
+export GOPATH=`pwd`
+
+go run java2go.go -d $DIR $@
