@@ -5,6 +5,7 @@ import (
     "errors"
     "fmt"
     "os"
+    "path"
     "regexp"
     "strconv"
     "strings"
@@ -26,6 +27,69 @@ func convertClass(java string) string {
     }
 
     return string(newname)
+}
+
+var name_entry_pat = regexp.MustCompile(`^\s+(.*)\(\(short\)(\d+)\),\s*$`)
+
+type NameEntry struct {
+    name string
+    num int
+}
+
+type NameFunc struct {
+    class string
+    name string
+    list []NameEntry
+}
+
+func NewNameFunc(cls string, dir string, name string) (*NameFunc, error) {
+    pathstr := path.Join(dir, name + ".java")
+    file, err := os.Open(pathstr)
+    if err != nil {
+        return nil, errors.New(fmt.Sprintf("Cannot open \"%s\"\n", pathstr))
+    }
+    defer file.Close()
+
+    namefunc := new(NameFunc)
+    namefunc.class = cls
+    namefunc.name = convertClass(name)
+
+    scan := bufio.NewScanner(file)
+    for scan.Scan() {
+        line := scan.Text()
+
+        m := name_entry_pat.FindStringSubmatch(line)
+        if m != nil {
+            val, err := strconv.ParseInt(m[2], 0, 32)
+            if err != nil {
+                return nil, err
+            }
+
+            namefunc.list = append(namefunc.list, NameEntry{m[1], int(val)})
+        }
+    }
+
+    return namefunc, nil
+}
+
+func (nf *NameFunc) IsName(name string) bool {
+    return name == nf.name
+}
+
+func (nf *NameFunc) PrintFunc() {
+    lowcls := nf.name
+
+    fmt.Printf("func (msg *Msg%s) %s_name() string {\n", nf.class, lowcls)
+    fmt.Printf("    switch msg.%s {\n", lowcls)
+    for _, entry := range nf.list {
+        fmt.Printf("    case %d: return \"%s\"\n", entry.num,
+            strings.ToLower(entry.name))
+    }
+    fmt.Printf("    default: return fmt.Sprintf(\"unknown#%%d\", msg.%s)\n",
+        lowcls)
+    fmt.Println("    }")
+    fmt.Println("}")
+    fmt.Println()
 }
 
 var base_type_names = [][]string{
@@ -96,7 +160,7 @@ var short_name_pairs = [][]string{
     []string{"timestamp", "tstmp"},
     []string{"type", "typ"},
     []string{"version", "vers"},
-    []string{"warevers", ""},
+    []string{"ware_vers", ""},
 }
 
 func NewField(flds []string) (*Field, error) {
@@ -136,8 +200,8 @@ func NewField(flds []string) (*Field, error) {
     return fld, nil
 }
 
-func (fld *Field) FormatString() string {
-    if fld.ftype == 7 {
+func (fld *Field) FormatString(has_func bool) string {
+    if has_func || fld.ftype == 7 {
         return "%s"
     } else if fld.ftype == 8 || fld.ftype == 9 {
         return "%f"
@@ -152,6 +216,10 @@ func (fld *Field) GoType() string {
 
 func (fld *Field) Name() string {
     return fld.name
+}
+
+func (fld *Field) Number() int {
+    return fld.num
 }
 
 func (fld *Field) ShortName() string {
@@ -178,6 +246,7 @@ func (fld *Field) String() string {
 type Message struct {
     cls string
     flds []*Field
+    namefuncs []*NameFunc
 }
 
 var msg_class_pat = regexp.MustCompile(`^public\s+class\s+(.*)Mesg\s+` +
@@ -185,10 +254,10 @@ var msg_class_pat = regexp.MustCompile(`^public\s+class\s+(.*)Mesg\s+` +
 var msg_field_pat = regexp.MustCompile(`^\s*.*Mesg\.addField\(new\s+` +
     `Field\((.*)\)\);\s*$`)
 
-func NewMessage(path string) (*Message, error) {
-    file, err := os.Open(path)
+func NewMessage(filename string) (*Message, error) {
+    file, err := os.Open(filename)
     if err != nil {
-        return nil, errors.New(fmt.Sprintf("Cannot open \"%s\"\n", path))
+        return nil, errors.New(fmt.Sprintf("Cannot open \"%s\"\n", filename))
     }
     defer file.Close()
 
@@ -232,10 +301,34 @@ func NewMessage(path string) (*Message, error) {
     }
 
     if msg.cls == "" {
-        return nil, errors.New("Cannot find class name in " + path)
+        return nil, errors.New("Cannot find class name in " + filename)
+    }
+
+    if msg.cls == "Event" {
+        nf, err := NewNameFunc(msg.cls, path.Dir(filename), "Event")
+        if err != nil {
+            return nil, err
+        }
+        msg.namefuncs = append(msg.namefuncs, nf)
+
+        nf, err = NewNameFunc(msg.cls, path.Dir(filename), "EventType")
+        if err != nil {
+            return nil, err
+        }
+        msg.namefuncs = append(msg.namefuncs, nf)
     }
 
     return msg, nil
+}
+
+func (msg *Message) hasFunc(fld *Field) bool {
+    for _, nf := range msg.namefuncs {
+        if nf.IsName(fld.Name()) {
+            return true
+        }
+    }
+
+    return false
 }
 
 func (msg *Message) PrintFuncs() {
@@ -243,42 +336,55 @@ func (msg *Message) PrintFuncs() {
 
     fmt.Printf("// %s message\n", lowcls)
     fmt.Println()
+
     fmt.Printf("type Msg%s struct {\n", msg.cls)
     for _, f := range msg.flds {
         fmt.Printf("    %s %s\n", f.Name(), f.GoType())
     }
     fmt.Println("}")
     fmt.Println()
+
+    for _, nf := range msg.namefuncs {
+        nf.PrintFunc()
+    }
+
     fmt.Printf("func (msg *Msg%s) name() string {\n", msg.cls)
     fmt.Printf("    return \"%s\"\n", lowcls)
     fmt.Println("}")
     fmt.Println()
+
     fmt.Printf("func (msg *Msg%s) text() string {\n", msg.cls)
     fmtstr := "    return fmt.Sprintf(\"" + lowcls
     for _, f := range msg.flds {
-        fldfmt := " " + f.ShortName() + " " + f.FormatString()
+        fldfmt := " " + f.ShortName() + " " + f.FormatString(msg.hasFunc(f))
         newfmt := fmtstr + fldfmt
         if len(newfmt) <= 77 {
             fmtstr = newfmt
         } else {
             fmt.Println(fmtstr + "\" +")
-            fmtstr = "       \"" + fldfmt
+            fmtstr = "        \"" + fldfmt
         }
     }
     fmtstr += "\""
     for _, f := range msg.flds {
-        newfld := ", msg." + f.Name()
+        attr := "msg." + f.Name()
+        if msg.hasFunc(f) {
+            attr += "_name()"
+        }
+
+        newfld := ", " + attr
         newfmt := fmtstr + newfld
         if len(newfmt) <= 79 {
             fmtstr = newfmt
         } else {
             fmt.Println(fmtstr + ",")
-            fmtstr = "        msg." + f.Name()
+            fmtstr = "        " + attr
         }
     }
     fmt.Println(fmtstr + ")")
     fmt.Println("}")
     fmt.Println()
+
     fmt.Printf("func NewMsg%s(def *FitDefinition, data []byte)" +
         " (*Msg%s, error) {\n", msg.cls, msg.cls)
     fmt.Printf("    msg := new(Msg%s)\n", msg.cls)
@@ -286,11 +392,9 @@ func (msg *Message) PrintFuncs() {
     fmt.Println("    pos := 0")
     fmt.Println("    for i := 0; i < len(def.fields); i++ {")
     fmt.Println("        switch def.fields[i].num {")
-    n := 0
     for _, f := range msg.flds {
         fmt.Printf("        case %d: msg.%s, pos = get_%s_pos(data, pos)\n",
-            n, f.Name(), f.GoType())
-        n += 1
+            f.Number(), f.Name(), f.GoType())
     }
     fmt.Println("        default:")
     fmt.Printf("            errmsg := fmt.Sprintf(\"Bad %s field #%%d\"," +
