@@ -141,18 +141,6 @@ func (s ByNum) Less(i, j int) bool {
 
 // data buffer extraction functions
 
-func get_uint8_pos(data []byte, pos int) (uint8, int) {
-    return data[pos], pos
-}
-
-func get_uint16_pos(data []byte, pos int) (uint16, int) {
-    return to_uint16(data[pos:pos + 2]), pos + 2
-}
-
-func get_uint32_pos(data []byte, pos int) (uint32, int) {
-    return to_uint32(data[pos:pos + 4]), pos + 4
-}
-
 func get_string_pos(data []byte, pos int) (string, int) {
     n := pos
     for n < len(data) {
@@ -164,6 +152,18 @@ func get_string_pos(data []byte, pos int) (string, int) {
     }
 
     return string(data[pos:n]), n
+}
+
+func get_uint8_pos(data []byte, pos int) (uint8, int) {
+    return data[pos], pos
+}
+
+func get_uint16_pos(data []byte, pos int) (uint16, int) {
+    return to_uint16(data[pos:pos + 2]), pos + 2
+}
+
+func get_uint32_pos(data []byte, pos int) (uint32, int) {
+    return to_uint32(data[pos:pos + 4]), pos + 4
 }
 
 // message interface
@@ -787,14 +787,6 @@ func to_uint16_endian(data []byte, order binary.ByteOrder) (ret uint16) {
     buf := bytes.NewBuffer(data)
     binary.Read(buf, order, &ret)
     return
-}
-
-func to_string(data[] byte) string {
-    if data[len(data) - 1] != 0 {
-        return string(data)
-    }
-
-    return string(data[:len(data)-1])
 }
 
 func to_uint32(data []byte) (ret uint32) {
