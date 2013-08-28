@@ -258,8 +258,32 @@ var msg_class_pat = regexp.MustCompile(`^public\s+class\s+(.*)Mesg\s+` +
 var msg_field_pat = regexp.MustCompile(`^\s*.*Mesg\.addField\(new\s+` +
     `Field\((.*)\)\);\s*$`)
 
-func NewMessage(filename string) (*Message, error) {
-    fd, err := os.Open(filename)
+func NewMessage(dir string, filename string) (*Message, error) {
+    var fullpath string
+    if dir == "" {
+        if _, err := os.Stat(filename); os.IsNotExist(err) {
+            errmsg := fmt.Sprintf("Cannot find \"%s\"", filename)
+            return nil, errors.New(errmsg)
+        }
+
+        fullpath = filename
+    } else {
+        fullpath = path.Join(dir, filename)
+        if _, err := os.Stat(fullpath); os.IsNotExist(err) {
+            if !strings.HasSuffix(filename, "Mesg.java") {
+                fullpath = fullpath + "Mesg.java"
+            } else if !strings.HasSuffix(filename, ".java") {
+                fullpath = fullpath + ".java"
+            }
+
+            if _, err := os.Stat(fullpath); os.IsNotExist(err) {
+                errmsg := fmt.Sprintf("Cannot find \"%s\"", filename)
+                return nil, errors.New(errmsg)
+            }
+        }
+    }
+
+    fd, err := os.Open(fullpath)
     if err != nil {
         return nil, errors.New(fmt.Sprintf("Cannot open \"%s\"\n", filename))
     }
@@ -309,20 +333,20 @@ func NewMessage(filename string) (*Message, error) {
     }
 
     if msg.cls == "Event" {
-        nf, err := NewNameFunc(msg.cls, path.Dir(filename), "Event", "event")
+        nf, err := NewNameFunc(msg.cls, path.Dir(fullpath), "Event", "event")
         if err != nil {
             return nil, err
         }
         msg.namefuncs = append(msg.namefuncs, nf)
 
-        nf, err = NewNameFunc(msg.cls, path.Dir(filename), "EventType",
+        nf, err = NewNameFunc(msg.cls, path.Dir(fullpath), "EventType",
             "event_type")
         if err != nil {
             return nil, err
         }
         msg.namefuncs = append(msg.namefuncs, nf)
     } else if msg.cls == "FileId" {
-        nf, err := NewNameFunc(msg.cls, path.Dir(filename), "File", "msgtype")
+        nf, err := NewNameFunc(msg.cls, path.Dir(fullpath), "File", "msgtype")
         if err != nil {
             return nil, err
         }
