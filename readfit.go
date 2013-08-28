@@ -29,6 +29,55 @@ var base_type_names = [14]string{
     "byte",
 }
 
+// data buffer extraction functions
+
+func get_string_pos(data []byte, pos int) (string, int) {
+    n := pos
+    for n < len(data) {
+        if data[n] == 0 {
+            n++
+            break
+        }
+        n++
+    }
+
+    return string(data[pos:n]), n
+}
+
+func get_uint8_pos(data []byte, pos int) (uint8, int) {
+    return data[pos], pos
+}
+
+func get_uint16_pos(data []byte, pos int) (uint16, int) {
+    return to_uint16(data[pos:pos + 2]), pos + 2
+}
+
+func get_uint32_pos(data []byte, pos int) (uint32, int) {
+    return to_uint32(data[pos:pos + 4]), pos + 4
+}
+
+func to_uint16(data []byte) (ret uint16) {
+    return to_uint16_endian(data, binary.LittleEndian)
+}
+
+func to_uint16_endian(data []byte, order binary.ByteOrder) (ret uint16) {
+    buf := bytes.NewBuffer(data)
+    binary.Read(buf, order, &ret)
+    return
+}
+
+func to_uint32(data []byte) (ret uint32) {
+    return to_uint32_endian(data, binary.LittleEndian)
+}
+
+func to_uint32_endian(data []byte, order binary.ByteOrder) (ret uint32) {
+    buf := bytes.NewBuffer(data)
+    binary.Read(buf, order, &ret)
+    return
+}
+
+// general utility functions
+
 func get_type_name(fld *FitFieldDefinition) string {
     if fld.base_type >= 0 &&
         int(fld.base_type) < len(base_type_names) {
@@ -137,33 +186,6 @@ type ByNum struct { Definitions }
 
 func (s ByNum) Less(i, j int) bool {
     return s.Definitions[i].num < s.Definitions[j].num
-}
-
-// data buffer extraction functions
-
-func get_string_pos(data []byte, pos int) (string, int) {
-    n := pos
-    for n < len(data) {
-        if data[n] == 0 {
-            n++
-            break
-        }
-        n++
-    }
-
-    return string(data[pos:n]), n
-}
-
-func get_uint8_pos(data []byte, pos int) (uint8, int) {
-    return data[pos], pos
-}
-
-func get_uint16_pos(data []byte, pos int) (uint16, int) {
-    return to_uint16(data[pos:pos + 2]), pos + 2
-}
-
-func get_uint32_pos(data []byte, pos int) (uint32, int) {
-    return to_uint32(data[pos:pos + 4]), pos + 4
 }
 
 // message interface
@@ -777,26 +799,6 @@ func readFit(filename string, verbose bool) error {
     }
 
     return nil
-}
-
-func to_uint16(data []byte) (ret uint16) {
-    return to_uint16_endian(data, binary.LittleEndian)
-}
-
-func to_uint16_endian(data []byte, order binary.ByteOrder) (ret uint16) {
-    buf := bytes.NewBuffer(data)
-    binary.Read(buf, order, &ret)
-    return
-}
-
-func to_uint32(data []byte) (ret uint32) {
-    return to_uint32_endian(data, binary.LittleEndian)
-}
-
-func to_uint32_endian(data []byte, order binary.ByteOrder) (ret uint32) {
-    buf := bytes.NewBuffer(data)
-    binary.Read(buf, order, &ret)
-    return
 }
 
 func processArgs() (bool, []string) {
