@@ -383,12 +383,12 @@ func (msg *Message) PrintFuncs() {
         nf.PrintFunc()
     }
 
-    fmt.Printf("func (msg *Msg%s) name() string {\n", msg.cls)
+    fmt.Printf("func (msg *Msg%s) Name() string {\n", msg.cls)
     fmt.Printf("    return \"%s\"\n", lowcls)
     fmt.Println("}")
     fmt.Println()
 
-    fmt.Printf("func (msg *Msg%s) text() string {\n", msg.cls)
+    fmt.Printf("func (msg *Msg%s) Text() string {\n", msg.cls)
     fmtstr := "    return fmt.Sprintf(\"" + lowcls
     for _, f := range msg.flds {
         fldfmt := " " + f.ShortName() + " " + f.FormatString(msg.hasFunc(f))

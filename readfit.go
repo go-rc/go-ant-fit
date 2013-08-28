@@ -177,8 +177,8 @@ func (s ByNum) Less(i, j int) bool {
 // message interface
 
 type FitMsg interface {
-    name() string
-    text() string
+    Name() string
+    Text() string
 }
 
 // file_id message
@@ -212,11 +212,11 @@ func (msg *MsgFileId) msgtype_name() string {
     }
 }
 
-func (msg *MsgFileId) name() string {
+func (msg *MsgFileId) Name() string {
     return "file_id"
 }
 
-func (msg *MsgFileId) text() string {
+func (msg *MsgFileId) Text() string {
     return fmt.Sprintf("file_id #%d msgtype %s mfct %d prod %d ser# %d time %d",
         msg.number, msg.msgtype_name(), msg.manufacturer, msg.product,
         msg.serial_number, msg.time_created)
@@ -312,11 +312,11 @@ func (msg *MsgEvent) event_type_name() string {
     }
 }
 
-func (msg *MsgEvent) name() string {
+func (msg *MsgEvent) Name() string {
     return "event"
 }
 
-func (msg *MsgEvent) text() string {
+func (msg *MsgEvent) Text() string {
     return fmt.Sprintf("event tstmp %d evt %s etyp %s", msg.timestamp,
         msg.event_name(), msg.event_type_name())
 }
@@ -357,11 +357,11 @@ type MsgSoftware struct {
     part_number string
 }
 
-func (msg *MsgSoftware) name() string {
+func (msg *MsgSoftware) Name() string {
     return "software"
 }
 
-func (msg *MsgSoftware) text() string {
+func (msg *MsgSoftware) Text() string {
     return fmt.Sprintf("software msgidx %d vers %d part# %d", msg.message_index,
         msg.version, msg.part_number)
 }
@@ -398,11 +398,11 @@ type MsgFileCreator struct {
     hardware_version byte
 }
 
-func (msg *MsgFileCreator) name() string {
+func (msg *MsgFileCreator) Name() string {
     return "file_creator"
 }
 
-func (msg *MsgFileCreator) text() string {
+func (msg *MsgFileCreator) Text() string {
     return fmt.Sprintf("file_creator soft %d hard %d", msg.software_version,
         msg.hardware_version)
 }
@@ -470,11 +470,11 @@ func (msg *MsgDeviceInfo) device_type_name() string {
     }
 }
 
-func (msg *MsgDeviceInfo) name() string {
+func (msg *MsgDeviceInfo) Name() string {
     return "device_info"
 }
 
-func (msg *MsgDeviceInfo) text() string {
+func (msg *MsgDeviceInfo) Text() string {
     return fmt.Sprintf("device_info tstmp %d idx %d dtyp %s mfr %d ser# %d" +
         " prod %d soft %d hard %d optime %d volt %d stat %d", msg.timestamp,
         msg.device_index, msg.device_type_name(), msg.manufacturer,
@@ -532,11 +532,11 @@ type MsgUnknown struct {
     data []byte
 }
 
-func (msg *MsgUnknown) name() string {
+func (msg *MsgUnknown) Name() string {
     return fmt.Sprintf("unknown#%d", msg.global_num)
 }
 
-func (msg *MsgUnknown) text() string {
+func (msg *MsgUnknown) Text() string {
     return fmt.Sprintf("unknown#%d", msg.global_num)
 }
 
