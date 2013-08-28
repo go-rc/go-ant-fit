@@ -424,7 +424,9 @@ func (msg *Message) PrintFuncs() {
         " (*Msg%s, error) {\n", msg.cls, msg.cls)
     fmt.Printf("    msg := new(Msg%s)\n", msg.cls)
     fmt.Println()
-    fmt.Println("    pos := 0")
+    if len(msg.flds) > 0 {
+        fmt.Println("    pos := 0")
+    }
     fmt.Println("    for i := 0; i < len(def.fields); i++ {")
     fmt.Println("        switch def.fields[i].num {")
     for _, f := range msg.flds {
