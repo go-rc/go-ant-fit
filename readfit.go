@@ -28,35 +28,21 @@ func get_string_pos(data []byte, pos int) (string, int) {
 }
 
 func get_uint8_pos(data []byte, pos int) (uint8, int) {
-    return data[pos], pos
+    return data[pos], pos + 1
 }
 
 func get_uint16_pos(data []byte, pos int) (uint16, int) {
-    return to_uint16(data[pos:pos + 2]), pos + 2
+    var ret uint16
+    buf := bytes.NewBuffer(data[pos:pos + 2])
+    binary.Read(buf, binary.LittleEndian, &ret)
+    return ret, pos + 2
 }
 
 func get_uint32_pos(data []byte, pos int) (uint32, int) {
-    return to_uint32(data[pos:pos + 4]), pos + 4
-}
-
-func to_uint16(data []byte) (ret uint16) {
-    return to_uint16_endian(data, binary.LittleEndian)
-}
-
-func to_uint16_endian(data []byte, order binary.ByteOrder) (ret uint16) {
-    buf := bytes.NewBuffer(data)
-    binary.Read(buf, order, &ret)
-    return
-}
-
-func to_uint32(data []byte) (ret uint32) {
-    return to_uint32_endian(data, binary.LittleEndian)
-}
-
-func to_uint32_endian(data []byte, order binary.ByteOrder) (ret uint32) {
-    buf := bytes.NewBuffer(data)
-    binary.Read(buf, order, &ret)
-    return
+    var ret uint32
+    buf := bytes.NewBuffer(data[pos:pos + 4])
+    binary.Read(buf, binary.LittleEndian, &ret)
+    return ret, pos + 4
 }
 
 // general utility functions
@@ -125,7 +111,7 @@ func checkCRC(rdr io.Reader, data []byte) error {
         return errors.New(fmt.Sprintf(errfmt, len(buf), n))
     }
 
-    goodCRC := to_uint16(buf)
+    goodCRC, _ := get_uint16_pos(buf, 0)
     if goodCRC == 0 {
         // CRC is not set, so we're done
         return nil
@@ -613,8 +599,8 @@ func (ffile *FitFile) open(filename string) error {
     }
 
     ffile.proto = buf[1]
-    ffile.profile = to_uint16(buf[2:4])
-    ffile.datasize = to_uint32(buf[4:9])
+    ffile.profile, _ = get_uint16_pos(buf, 2)
+    ffile.datasize, _ = get_uint32_pos(buf, 4)
 
     ffile.defs = make([]*FitDefinition, 0)
     ffile.data = make([]FitMsg, 0)
@@ -676,7 +662,7 @@ func (ffile *FitFile) readDefinition(local_type byte,
 
     def.local_type = local_type
     def.little_endian = buf[1] == 0
-    def.global_num = to_uint16(buf[2:4])
+    def.global_num, _ = get_uint16_pos(buf, 2)
     def.total_bytes = 0
 
     num := int(buf[4])
