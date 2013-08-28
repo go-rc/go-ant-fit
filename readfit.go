@@ -29,6 +29,21 @@ var base_type_names = [14]string{
     "byte",
 }
 
+func get_type_name(fld *FitFieldDefinition) string {
+    if fld.base_type >= 0 &&
+        int(fld.base_type) < len(base_type_names) {
+        return base_type_names[fld.base_type]
+    }
+
+    if fld.num == 253 && fld.base_type == 6 {
+        return "timestamp"
+    } else if fld.num == 254 {
+        return "message_index"
+    }
+
+    return fmt.Sprintf("unknown#%d", fld.num)
+}
+
 func addCRC(crc uint16, val byte) uint16 {
     lookup := [16]uint16{
         0x0000, 0xcc01, 0xd801, 0x1400, 0xf001, 0x3c00, 0x2800, 0xe401,
@@ -124,54 +139,7 @@ func (s ByNum) Less(i, j int) bool {
     return s.Definitions[i].num < s.Definitions[j].num
 }
 
-// message interface
-
-type FitMsg interface {
-    name() string
-    text() string
-}
-
-// file_id message
-
-type MsgFileId struct {
-    msgtype byte
-    manufacturer uint16
-    product uint16
-    serial_number uint32
-    time_created uint32
-    number uint16
-}
-
-func (msg *MsgFileId) msgtype_name() string {
-    switch msg.msgtype {
-    case 1: return "device";
-    case 2: return "settings";
-    case 3: return "sport";
-    case 4: return "activity";
-    case 5: return "workout";
-    case 6: return "course";
-    case 7: return "schedules";
-    case 9: return "weight";
-    case 10: return "totals";
-    case 11: return "goals";
-    case 14: return "blood_pressure";
-    case 15: return "monitoring";
-    case 20: return "activity_summary";
-    case 28: return "monitoring_daily";
-    default: return fmt.Sprintf("invalid#%d", msg.msgtype);
-
-    }
-}
-
-func (msg *MsgFileId) name() string {
-    return "file_id"
-}
-
-func (msg *MsgFileId) text() string {
-    return fmt.Sprintf("file_id #%d msgtype %s mfct %d prod %d ser# %d time %d",
-        msg.number, msg.msgtype_name(), msg.manufacturer, msg.product,
-        msg.serial_number, msg.time_created)
-}
+// data buffer extraction functions
 
 func get_uint8_pos(data []byte, pos int) (uint8, int) {
     return data[pos], pos
@@ -196,6 +164,54 @@ func get_string_pos(data []byte, pos int) (string, int) {
     }
 
     return string(data[pos:n]), n
+}
+
+// message interface
+
+type FitMsg interface {
+    name() string
+    text() string
+}
+
+// file_id message
+
+type MsgFileId struct {
+    msgtype byte
+    manufacturer uint16
+    product uint16
+    serial_number uint32
+    time_created uint32
+    number uint16
+}
+
+func (msg *MsgFileId) msgtype_name() string {
+    switch msg.msgtype {
+    case 1: return "device"
+    case 2: return "settings"
+    case 3: return "sport"
+    case 4: return "activity"
+    case 5: return "workout"
+    case 6: return "course"
+    case 7: return "schedules"
+    case 9: return "weight"
+    case 10: return "totals"
+    case 11: return "goals"
+    case 14: return "blood_pressure"
+    case 15: return "monitoring"
+    case 20: return "activity_summary"
+    case 28: return "monitoring_daily"
+    default: return fmt.Sprintf("invalid#%d", msg.msgtype)
+    }
+}
+
+func (msg *MsgFileId) name() string {
+    return "file_id"
+}
+
+func (msg *MsgFileId) text() string {
+    return fmt.Sprintf("file_id #%d msgtype %s mfct %d prod %d ser# %d time %d",
+        msg.number, msg.msgtype_name(), msg.manufacturer, msg.product,
+        msg.serial_number, msg.time_created)
 }
 
 func NewMsgFileId(def *FitDefinition, data []byte) (*MsgFileId, error) {
@@ -393,7 +409,6 @@ func NewMsgFileCreator(def *FitDefinition,
     }
 
     msg := new(MsgFileCreator)
-
 
     pos := 0
     for i := 0; i < len(def.fields); i++ {
@@ -658,22 +673,9 @@ func (ffile *FitFile) readDefinition(local_type byte,
         fmt.Printf("  def: ltyp %v little_endian %v glbl %d\n",
             def.local_type, def.little_endian, def.global_num)
         for i := 0; i < len(def.fields); i++ {
-            var type_name string
-
-            if def.fields[i].base_type >= 0 &&
-                int(def.fields[i].base_type) < len(base_type_names) {
-                type_name = base_type_names[def.fields[i].base_type]
-            }
-
-            if def.fields[i].num == 253 && def.fields[i].base_type == 6 {
-                type_name = "timestamp"
-            } else if def.fields[i].num == 254 {
-                type_name = "message_index"
-            }
-
             fmt.Printf("       :: num %d sz %d endian %v type %s\n",
                 def.fields[i].num, def.fields[i].size, def.fields[i].is_endian,
-                type_name)
+                get_type_name(def.fields[i]))
         }
     }
 
