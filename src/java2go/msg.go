@@ -42,19 +42,20 @@ type NameFunc struct {
     list []NameEntry
 }
 
-func NewNameFunc(cls string, dir string, name string) (*NameFunc, error) {
-    pathstr := path.Join(dir, name + ".java")
-    file, err := os.Open(pathstr)
+func NewNameFunc(cls string, dir string, file string,
+    name string) (*NameFunc, error) {
+    pathstr := path.Join(dir, file + ".java")
+    fd, err := os.Open(pathstr)
     if err != nil {
         return nil, errors.New(fmt.Sprintf("Cannot open \"%s\"\n", pathstr))
     }
-    defer file.Close()
+    defer fd.Close()
 
     namefunc := new(NameFunc)
     namefunc.class = cls
     namefunc.name = convertClass(name)
 
-    scan := bufio.NewScanner(file)
+    scan := bufio.NewScanner(fd)
     for scan.Scan() {
         line := scan.Text()
 
@@ -167,6 +168,9 @@ func NewField(flds []string) (*Field, error) {
     fld := new(Field)
 
     fld.name = strings.Trim(flds[0], `'"`)
+    if fld.name == "type" {
+        fld.name = "msgtype"
+    }
 
     for i := 1; i < 3; i++ {
         val, err := strconv.ParseInt(flds[i], 0, 32)
@@ -255,15 +259,15 @@ var msg_field_pat = regexp.MustCompile(`^\s*.*Mesg\.addField\(new\s+` +
     `Field\((.*)\)\);\s*$`)
 
 func NewMessage(filename string) (*Message, error) {
-    file, err := os.Open(filename)
+    fd, err := os.Open(filename)
     if err != nil {
         return nil, errors.New(fmt.Sprintf("Cannot open \"%s\"\n", filename))
     }
-    defer file.Close()
+    defer fd.Close()
 
     msg := new(Message)
 
-    scan := bufio.NewScanner(file)
+    scan := bufio.NewScanner(fd)
     for scan.Scan() {
         line := scan.Text()
 
@@ -305,13 +309,20 @@ func NewMessage(filename string) (*Message, error) {
     }
 
     if msg.cls == "Event" {
-        nf, err := NewNameFunc(msg.cls, path.Dir(filename), "Event")
+        nf, err := NewNameFunc(msg.cls, path.Dir(filename), "Event", "event")
         if err != nil {
             return nil, err
         }
         msg.namefuncs = append(msg.namefuncs, nf)
 
-        nf, err = NewNameFunc(msg.cls, path.Dir(filename), "EventType")
+        nf, err = NewNameFunc(msg.cls, path.Dir(filename), "EventType",
+            "event_type")
+        if err != nil {
+            return nil, err
+        }
+        msg.namefuncs = append(msg.namefuncs, nf)
+    } else if msg.cls == "FileId" {
+        nf, err := NewNameFunc(msg.cls, path.Dir(filename), "File", "msgtype")
         if err != nil {
             return nil, err
         }
