@@ -12,23 +12,6 @@ import (
     //"sort"
 )
 
-var base_type_names = [14]string{
-    "enum",
-    "int8",
-    "uint8",
-    "int16",
-    "uint16",
-    "int32",
-    "uint32",
-    "string",
-    "float32",
-    "float64",
-    "uint8z",
-    "uint16z",
-    "uint32z",
-    "byte",
-}
-
 // data buffer extraction functions
 
 func get_string_pos(data []byte, pos int) (string, int) {
@@ -77,6 +60,23 @@ func to_uint32_endian(data []byte, order binary.ByteOrder) (ret uint32) {
 }
 
 // general utility functions
+
+var base_type_names = [14]string{
+    "enum",
+    "int8",
+    "uint8",
+    "int16",
+    "uint16",
+    "int32",
+    "uint32",
+    "string",
+    "float32",
+    "float64",
+    "uint8z",
+    "uint16z",
+    "uint32z",
+    "byte",
+}
 
 func get_type_name(fld *FitFieldDefinition) string {
     if fld.base_type >= 0 &&
