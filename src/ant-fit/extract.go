@@ -7,6 +7,28 @@ import (
 
 // data buffer extraction functions
 
+func get_byte_pos(data []byte, pos int) (byte, int) {
+    return data[pos], pos + 1
+}
+
+func get_int8_pos(data []byte, pos int) (int8, int) {
+    return int8(data[pos]), pos + 1
+}
+
+func get_int16_pos(data []byte, pos int) (int16, int) {
+    var ret int16
+    buf := bytes.NewBuffer(data[pos:pos + 2])
+    binary.Read(buf, binary.LittleEndian, &ret)
+    return ret, pos + 2
+}
+
+func get_int32_pos(data []byte, pos int) (int32, int) {
+    var ret int32
+    buf := bytes.NewBuffer(data[pos:pos + 4])
+    binary.Read(buf, binary.LittleEndian, &ret)
+    return ret, pos + 4
+}
+
 func get_string_pos(data []byte, pos int) (string, int) {
     n := pos
     for n < len(data) {
