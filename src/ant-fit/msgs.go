@@ -192,7 +192,7 @@ func (msg *MsgUserProfile) Text() string {
         " weightsetting %d restingheartrate %d defaultmaxrunningheartrate %d" +
         " defaultmaxbikingheartrate %d defaultmaxheartrate %d hrsetting %d" +
         " speedsetting %d distsetting %d powersetting %d activityclass %d" +
-        " positionsetting %d temperaturesetting %d localid %d globalid %d",
+        " possetting %d tempsetting %d localid %d globalid %d",
         msg.message_index, msg.friendly_name, msg.gender, msg.age, msg.height,
         msg.weight, msg.language, msg.elev_setting, msg.weight_setting,
         msg.resting_heart_rate, msg.default_max_running_heart_rate,
@@ -369,7 +369,7 @@ func (msg *MsgBikeProfile) Text() string {
         " bikepowerantid %d customwheelsize %d autowheelsize %d bikeweight %d" +
         " powercalfactor %d autowheelcal %d autopowerzero %d id %d" +
         " spdenabled %d cadenabled %d spdcadenabled %d powerenabled %d" +
-        " cranklength %d enabled %d bikespdantidtranstyp %d" +
+        " cranklen %d enabled %d bikespdantidtranstyp %d" +
         " bikecadantidtranstyp %d bikespdcadantidtranstyp %d" +
         " bikepowerantidtranstyp %d odometerrollover %d", msg.message_index,
         msg.name, msg.sport, msg.sub_sport, msg.odometer, msg.bike_spd_ant_id,
@@ -549,9 +549,8 @@ func (msg *MsgMetZone) Name() string {
 }
 
 func (msg *MsgMetZone) Text() string {
-    return fmt.Sprintf("met_zone msgidx %d highbpm %d calories %d" +
-        " fatcalories %d", msg.message_index, msg.high_bpm, msg.calories,
-        msg.fat_calories)
+    return fmt.Sprintf("met_zone msgidx %d highbpm %d cals %d fatcals %d",
+        msg.message_index, msg.high_bpm, msg.calories, msg.fat_calories)
 }
 
 func NewMsgMetZone(def *FitDefinition, data []byte) (*MsgMetZone, error) {
@@ -744,45 +743,44 @@ func (msg *MsgSession) Name() string {
 
 func (msg *MsgSession) Text() string {
     return fmt.Sprintf("session msgidx %d tstmp %d evt %d evttyp %d" +
-        " starttime %d startpositionlat %d startpositionlong %d sport %d" +
-        " subsport %d totalelapsedtime %d totaltimertime %d totaldistance %d" +
-        " totalcycles %d totalcalories %d totalfatcalories %d avgspeed %d" +
-        " maxspeed %d avgheartrate %d maxheartrate %d avgcadence %d" +
-        " maxcadence %d avgpower %d maxpower %d totalascent %d" +
-        " totaldescent %d totaltrainingeffect %d firstlapidx %d numlaps %d" +
-        " evtgrp %d trigger %d neclat %d neclong %d swclat %d swclong %d" +
+        " starttime %d startposlat %d startposlong %d sport %d subsport %d" +
+        " totalelapsedtime %d totaltimertime %d totaldist %d totalcycles %d" +
+        " totalcals %d totalfatcals %d avgspeed %d maxspeed %d" +
+        " avgheartrate %d maxheartrate %d avgcadence %d maxcadence %d" +
+        " avgpower %d maxpower %d totalascent %d totaldescent %d" +
+        " totaltrainingeffect %d firstlapidx %d numlaps %d evtgrp %d" +
+        " trigger %d neclat %d neclong %d swclat %d swclong %d" +
         " normalizedpower %d trainingstressscore %d intensityfactor %d" +
-        " leftrightbalance %d avgstrokecount %d avgstrokedistance %d" +
-        " swimstroke %d poollength %d poollengthunit %d numactivelengths %d" +
-        " totalwork %d avgaltitude %d maxaltitude %d gpsaccuracy %d" +
-        " avggrade %d avgposgrade %d avgneggrade %d maxposgrade %d" +
-        " maxneggrade %d avgtemperature %d maxtemperature %d" +
-        " totalmovingtime %d avgposverticalspeed %d avgnegverticalspeed %d" +
-        " maxposverticalspeed %d maxnegverticalspeed %d minheartrate %d" +
-        " timeinhrzone %d timeinspeedzone %d timeincadencezone %d" +
-        " timeinpowerzone %d avglaptime %d bestlapidx %d minaltitude %d",
-        msg.message_index, msg.timestamp, msg.event, msg.event_type,
-        msg.start_time, msg.start_position_lat, msg.start_position_long,
-        msg.sport, msg.sub_sport, msg.total_elapsed_time, msg.total_timer_time,
-        msg.total_distance, msg.total_cycles, msg.total_calories,
-        msg.total_fat_calories, msg.avg_speed, msg.max_speed,
-        msg.avg_heart_rate, msg.max_heart_rate, msg.avg_cadence,
-        msg.max_cadence, msg.avg_power, msg.max_power, msg.total_ascent,
-        msg.total_descent, msg.total_training_effect, msg.first_lap_index,
-        msg.num_laps, msg.event_group, msg.trigger, msg.nec_lat, msg.nec_long,
-        msg.swc_lat, msg.swc_long, msg.normalized_power,
-        msg.training_stress_score, msg.intensity_factor, msg.left_right_balance,
-        msg.avg_stroke_count, msg.avg_stroke_distance, msg.swim_stroke,
-        msg.pool_length, msg.pool_length_unit, msg.num_active_lengths,
-        msg.total_work, msg.avg_altitude, msg.max_altitude, msg.gps_accuracy,
-        msg.avg_grade, msg.avg_pos_grade, msg.avg_neg_grade, msg.max_pos_grade,
-        msg.max_neg_grade, msg.avg_temperature, msg.max_temperature,
-        msg.total_moving_time, msg.avg_pos_vertical_speed,
-        msg.avg_neg_vertical_speed, msg.max_pos_vertical_speed,
-        msg.max_neg_vertical_speed, msg.min_heart_rate, msg.time_in_hr_zone,
-        msg.time_in_speed_zone, msg.time_in_cadence_zone,
-        msg.time_in_power_zone, msg.avg_lap_time, msg.best_lap_index,
-        msg.min_altitude)
+        " leftrightbalance %d avgstrokecount %d avgstrokedist %d" +
+        " swimstroke %d poollen %d poollenunit %d numactivelens %d" +
+        " totalwork %d avgalt %d maxalt %d gpsaccuracy %d avggrade %d" +
+        " avgposgrade %d avgneggrade %d maxposgrade %d maxneggrade %d" +
+        " avgtemp %d maxtemp %d totalmovingtime %d avgposvertspeed %d" +
+        " avgnegvertspeed %d maxposvertspeed %d maxnegvertspeed %d" +
+        " minheartrate %d timeinhrzone %d timeinspeedzone %d" +
+        " timeincadencezone %d timeinpowerzone %d avglaptime %d bestlapidx %d" +
+        " minalt %d", msg.message_index, msg.timestamp, msg.event,
+        msg.event_type, msg.start_time, msg.start_position_lat,
+        msg.start_position_long, msg.sport, msg.sub_sport,
+        msg.total_elapsed_time, msg.total_timer_time, msg.total_distance,
+        msg.total_cycles, msg.total_calories, msg.total_fat_calories,
+        msg.avg_speed, msg.max_speed, msg.avg_heart_rate, msg.max_heart_rate,
+        msg.avg_cadence, msg.max_cadence, msg.avg_power, msg.max_power,
+        msg.total_ascent, msg.total_descent, msg.total_training_effect,
+        msg.first_lap_index, msg.num_laps, msg.event_group, msg.trigger,
+        msg.nec_lat, msg.nec_long, msg.swc_lat, msg.swc_long,
+        msg.normalized_power, msg.training_stress_score, msg.intensity_factor,
+        msg.left_right_balance, msg.avg_stroke_count, msg.avg_stroke_distance,
+        msg.swim_stroke, msg.pool_length, msg.pool_length_unit,
+        msg.num_active_lengths, msg.total_work, msg.avg_altitude,
+        msg.max_altitude, msg.gps_accuracy, msg.avg_grade, msg.avg_pos_grade,
+        msg.avg_neg_grade, msg.max_pos_grade, msg.max_neg_grade,
+        msg.avg_temperature, msg.max_temperature, msg.total_moving_time,
+        msg.avg_pos_vertical_speed, msg.avg_neg_vertical_speed,
+        msg.max_pos_vertical_speed, msg.max_neg_vertical_speed,
+        msg.min_heart_rate, msg.time_in_hr_zone, msg.time_in_speed_zone,
+        msg.time_in_cadence_zone, msg.time_in_power_zone, msg.avg_lap_time,
+        msg.best_lap_index, msg.min_altitude)
 }
 
 func NewMsgSession(def *FitDefinition, data []byte) (*MsgSession, error) {
@@ -940,21 +938,20 @@ func (msg *MsgLap) Name() string {
 
 func (msg *MsgLap) Text() string {
     return fmt.Sprintf("lap msgidx %d tstmp %d evt %d evttyp %d starttime %d" +
-        " startpositionlat %d startpositionlong %d endpositionlat %d" +
-        " endpositionlong %d totalelapsedtime %d totaltimertime %d" +
-        " totaldistance %d totalcycles %d totalcalories %d" +
-        " totalfatcalories %d avgspeed %d maxspeed %d avgheartrate %d" +
-        " maxheartrate %d avgcadence %d maxcadence %d avgpower %d maxpower %d" +
-        " totalascent %d totaldescent %d intensity %d laptrigger %d sport %d" +
-        " evtgrp %d numlengths %d normalizedpower %d leftrightbalance %d" +
-        " firstlengthidx %d avgstrokedistance %d swimstroke %d subsport %d" +
-        " numactivelengths %d totalwork %d avgaltitude %d maxaltitude %d" +
+        " startposlat %d startposlong %d endposlat %d endposlong %d" +
+        " totalelapsedtime %d totaltimertime %d totaldist %d totalcycles %d" +
+        " totalcals %d totalfatcals %d avgspeed %d maxspeed %d" +
+        " avgheartrate %d maxheartrate %d avgcadence %d maxcadence %d" +
+        " avgpower %d maxpower %d totalascent %d totaldescent %d intensity %d" +
+        " laptrigger %d sport %d evtgrp %d numlens %d normalizedpower %d" +
+        " leftrightbalance %d firstlenidx %d avgstrokedist %d swimstroke %d" +
+        " subsport %d numactivelens %d totalwork %d avgalt %d maxalt %d" +
         " gpsaccuracy %d avggrade %d avgposgrade %d avgneggrade %d" +
-        " maxposgrade %d maxneggrade %d avgtemperature %d maxtemperature %d" +
-        " totalmovingtime %d avgposverticalspeed %d avgnegverticalspeed %d" +
-        " maxposverticalspeed %d maxnegverticalspeed %d timeinhrzone %d" +
+        " maxposgrade %d maxneggrade %d avgtemp %d maxtemp %d" +
+        " totalmovingtime %d avgposvertspeed %d avgnegvertspeed %d" +
+        " maxposvertspeed %d maxnegvertspeed %d timeinhrzone %d" +
         " timeinspeedzone %d timeincadencezone %d timeinpowerzone %d" +
-        " repetitionnum %d minaltitude %d minheartrate %d wktstepidx %d",
+        " repetitionnum %d minalt %d minheartrate %d wktstepidx %d",
         msg.message_index, msg.timestamp, msg.event, msg.event_type,
         msg.start_time, msg.start_position_lat, msg.start_position_long,
         msg.end_position_lat, msg.end_position_long, msg.total_elapsed_time,
@@ -1092,15 +1089,14 @@ func (msg *MsgRecord) Name() string {
 }
 
 func (msg *MsgRecord) Text() string {
-    return fmt.Sprintf("record tstmp %d positionlat %d positionlong %d" +
-        " altitude %d heartrate %d cadence %d distance %d speed %d power %d" +
-        " compressedspeeddistance %d grade %d resistance %d timefromcourse %d" +
-        " cyclelength %d temperature %d speed1s %d cycles %d totalcycles %d" +
-        " compressedaccumulatedpower %d accumulatedpower %d" +
-        " leftrightbalance %d gpsaccuracy %d verticalspeed %d calories %d" +
-        " lefttorqueeffectiveness %d righttorqueeffectiveness %d" +
-        " leftpedalsmoothness %d rightpedalsmoothness %d" +
-        " combinedpedalsmoothness %d cadence256 %d", msg.timestamp,
+    return fmt.Sprintf("record tstmp %d poslat %d poslong %d alt %d" +
+        " heartrate %d cadence %d dist %d speed %d power %d" +
+        " compressedspeeddist %d grade %d resistance %d timefromcourse %d" +
+        " cyclelen %d temp %d speed1s %d cycles %d totalcycles %d" +
+        " compressedaccumpower %d accumpower %d leftrightbalance %d" +
+        " gpsaccuracy %d vertspeed %d cals %d lefttorqueeffectiveness %d" +
+        " righttorqueeffectiveness %d leftpedalsmooth %d rightpedalsmooth %d" +
+        " combinedpedalsmooth %d cadence256 %d", msg.timestamp,
         msg.position_lat, msg.position_long, msg.altitude, msg.heart_rate,
         msg.cadence, msg.distance, msg.speed, msg.power,
         msg.compressed_speed_distance, msg.grade, msg.resistance,
@@ -1271,12 +1267,12 @@ func (msg *MsgDeviceInfo) Name() string {
 }
 
 func (msg *MsgDeviceInfo) Text() string {
-    return fmt.Sprintf("device_info tstmp %d deviceidx %d devicetyp %d" +
-        " mfct %d ser# %d prod %d soft %d hard %d cumoperatingtime %d" +
-        " batteryvoltage %d batterystatus %d", msg.timestamp, msg.device_index,
-        msg.device_type, msg.manufacturer, msg.serial_number, msg.product,
-        msg.software_version, msg.hardware_version, msg.cum_operating_time,
-        msg.battery_voltage, msg.battery_status)
+    return fmt.Sprintf("device_info tstmp %d devidx %d devtyp %d mfct %d" +
+        " ser# %d prod %d soft %d hard %d cumoptime %d battvolt %d" +
+        " battstat %d", msg.timestamp, msg.device_index, msg.device_type,
+        msg.manufacturer, msg.serial_number, msg.product, msg.software_version,
+        msg.hardware_version, msg.cum_operating_time, msg.battery_voltage,
+        msg.battery_status)
 }
 
 func NewMsgDeviceInfo(def *FitDefinition, data []byte) (*MsgDeviceInfo, error) {
@@ -1552,10 +1548,10 @@ func (msg *MsgCoursePoint) Name() string {
 }
 
 func (msg *MsgCoursePoint) Text() string {
-    return fmt.Sprintf("course_point msgidx %d tstmp %d positionlat %d" +
-        " positionlong %d distance %d msgtyp %d name %s", msg.message_index,
-        msg.timestamp, msg.position_lat, msg.position_long, msg.distance,
-        msg.msgtype, msg.name)
+    return fmt.Sprintf("course_point msgidx %d tstmp %d poslat %d poslong %d" +
+        " dist %d msgtyp %d name %s", msg.message_index, msg.timestamp,
+        msg.position_lat, msg.position_long, msg.distance, msg.msgtype,
+        msg.name)
 }
 
 func NewMsgCoursePoint(def *FitDefinition, data []byte) (*MsgCoursePoint, error) {
@@ -1599,8 +1595,8 @@ func (msg *MsgTotals) Name() string {
 }
 
 func (msg *MsgTotals) Text() string {
-    return fmt.Sprintf("totals msgidx %d tstmp %d timertime %d distance %d" +
-        " calories %d sport %d elapsedtime %d sessions %d activetime %d",
+    return fmt.Sprintf("totals msgidx %d tstmp %d timertime %d dist %d" +
+        " cals %d sport %d elapsedtime %d sessions %d activetime %d",
         msg.message_index, msg.timestamp, msg.timer_time, msg.distance,
         msg.calories, msg.sport, msg.elapsed_time, msg.sessions,
         msg.active_time)
@@ -1891,7 +1887,7 @@ func (msg *MsgBloodPressure) Text() string {
     return fmt.Sprintf("blood_pressure tstmp %d systolicpressure %d" +
         " diastolicpressure %d meanarterialpressure %d map3samplemean %d" +
         " mapmorningvalues %d mapeveningvalues %d heartrate %d" +
-        " heartratetyp %d status %d userprofileidx %d", msg.timestamp,
+        " heartratetyp %d stat %d userprofileidx %d", msg.timestamp,
         msg.systolic_pressure, msg.diastolic_pressure,
         msg.mean_arterial_pressure, msg.map_3_sample_mean,
         msg.map_morning_values, msg.map_evening_values, msg.heart_rate,
@@ -1981,13 +1977,12 @@ func (msg *MsgMonitoring) Name() string {
 }
 
 func (msg *MsgMonitoring) Text() string {
-    return fmt.Sprintf("monitoring tstmp %d deviceidx %d calories %d" +
-        " distance %d cycles %d activetime %d activitytyp %d" +
-        " activitysubtyp %d compresseddistance %d compressedcycles %d" +
-        " compressedactivetime %d localtstmp %d", msg.timestamp,
-        msg.device_index, msg.calories, msg.distance, msg.cycles,
-        msg.active_time, msg.activity_type, msg.activity_subtype,
-        msg.compressed_distance, msg.compressed_cycles,
+    return fmt.Sprintf("monitoring tstmp %d devidx %d cals %d dist %d" +
+        " cycles %d activetime %d activitytyp %d activitysubtyp %d" +
+        " compresseddist %d compressedcycles %d compressedactivetime %d" +
+        " localtstmp %d", msg.timestamp, msg.device_index, msg.calories,
+        msg.distance, msg.cycles, msg.active_time, msg.activity_type,
+        msg.activity_subtype, msg.compressed_distance, msg.compressed_cycles,
         msg.compressed_active_time, msg.local_timestamp)
 }
 
@@ -2075,8 +2070,8 @@ func (msg *MsgLength) Text() string {
     return fmt.Sprintf("length msgidx %d tstmp %d evt %d evttyp %d" +
         " starttime %d totalelapsedtime %d totaltimertime %d totalstrokes %d" +
         " avgspeed %d swimstroke %d avgswimmingcadence %d evtgrp %d" +
-        " totalcalories %d lengthtyp %d", msg.message_index, msg.timestamp,
-        msg.event, msg.event_type, msg.start_time, msg.total_elapsed_time,
+        " totalcals %d lentyp %d", msg.message_index, msg.timestamp, msg.event,
+        msg.event_type, msg.start_time, msg.total_elapsed_time,
         msg.total_timer_time, msg.total_strokes, msg.avg_speed, msg.swim_stroke,
         msg.avg_swimming_cadence, msg.event_group, msg.total_calories,
         msg.length_type)

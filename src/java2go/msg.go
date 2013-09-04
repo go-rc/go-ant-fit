@@ -149,18 +149,32 @@ type Field struct {
 }
 
 var short_name_pairs = [][]string{
+    []string{"accumulated", "accum"},
+    []string{"altitude", "alt"},
+    []string{"battery", "batt"},
+    []string{"calorie", "cal"},
     []string{"created", "cre"},
+    []string{"device", "dev"},
+    []string{"distance", "dist"},
     []string{"event", "evt"},
     []string{"group", "grp"},
     []string{"index", "idx"},
+    []string{"length", "len"},
     []string{"manufacturer", "mfct"},
     []string{"message", "msg"},
     []string{"number", "#"},
+    []string{"operating", "op"},
     []string{"product", "prod"},
+    []string{"position", "pos"},
     []string{"serial", "ser"},
+    []string{"smoothness", "smooth"},
+    []string{"status", "stat"},
+    []string{"temperature", "temp"},
     []string{"timestamp", "tstmp"},
     []string{"type", "typ"},
     []string{"version", "vers"},
+    []string{"vertical", "vert"},
+    []string{"voltage", "volt"},
     []string{"ware_vers", ""},
 }
 
