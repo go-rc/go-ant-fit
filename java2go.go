@@ -13,10 +13,11 @@ import (
     "./src/java2go"
 )
 
-func processArgs() (string, []string) {
+func processArgs() (string, []string, bool) {
     usage := false
 
     dirp := flag.String("d", "", "ANT+ Fit Java source directory")
+    readp := flag.Bool("r", false, "If set, print readData() function")
 
     flag.Parse()
 
@@ -34,7 +35,7 @@ func processArgs() (string, []string) {
         os.Exit(1)
     }
 
-    return *dirp, files
+    return *dirp, files, *readp
 }
 
 var msg_pat = regexp.MustCompile(`^\s+public\s+static\s+final\s+int\s+` +
@@ -79,7 +80,71 @@ func readMessages(dir string) ([]*MesgNum, error) {
     return list, nil
 }
 
+func printMsgUnknown() {
+    fmt.Println()
+    fmt.Println("// unknown message")
+    fmt.Println()
+    fmt.Println("type MsgUnknown struct {")
+    fmt.Println("    global_num uint16")
+    fmt.Println("    data []byte")
+    fmt.Println("}")
+    fmt.Println()
+    fmt.Println("func (msg *MsgUnknown) Name() string {")
+    fmt.Println("    return fmt.Sprintf(\"unknown#%d\", msg.global_num)")
+    fmt.Println("}")
+    fmt.Println()
+    fmt.Println("func (msg *MsgUnknown) Text() string {")
+    fmt.Println("    return fmt.Sprintf(\"unknown#%d\", msg.global_num)")
+    fmt.Println("}")
+    fmt.Println()
+    fmt.Println("func NewMsgUnknown(def *FitDefinition, data []byte,")
+    fmt.Println("    global_num uint16) (*MsgUnknown, error) {")
+    fmt.Println("    msg := new(MsgUnknown)")
+    fmt.Println()
+    fmt.Println("    msg.global_num = global_num")
+    fmt.Println("    msg.data = make([]byte, len(data))")
+    fmt.Println("    copy(msg.data, data)")
+    fmt.Println()
+    fmt.Println("    return msg, nil")
+    fmt.Println("}")
+}
+
+func printInitial() {
+    fmt.Println("package ant_fit")
+    fmt.Println()
+
+    fmt.Println("import (")
+    fmt.Println("    \"errors\"")
+    fmt.Println("    \"fmt\"")
+    fmt.Println(")")
+    fmt.Println()
+    fmt.Println("type FitFieldDefinition struct {")
+    fmt.Println("    num byte")
+    fmt.Println("    size byte")
+    fmt.Println("    is_endian bool")
+    fmt.Println("    base_type byte")
+    fmt.Println("}")
+    fmt.Println()
+    fmt.Println("type FitDefinition struct {")
+    fmt.Println("    local_type byte")
+    fmt.Println("    little_endian bool")
+    fmt.Println("    global_num uint16")
+    fmt.Println("    fields []*FitFieldDefinition")
+    fmt.Println("    total_bytes uint16")
+    fmt.Println("}")
+    fmt.Println()
+    fmt.Println("// message interface")
+    fmt.Println()
+    fmt.Println("type FitMsg interface {")
+    fmt.Println("    Name() string")
+    fmt.Println("    Text() string")
+    fmt.Println("}")
+    fmt.Println()
+}
+
 func printMessages(dir string, list []*MesgNum) {
+    printInitial()
+
     for _, m := range list {
         msg, err := java2go.NewMessage(dir, m.name)
         if err != nil {
@@ -89,6 +154,11 @@ func printMessages(dir string, list []*MesgNum) {
         }
     }
 
+    printMsgUnknown()
+}
+
+func printReadData(list []*MesgNum) {
+    fmt.Println()
     fmt.Println("func (ffile *FitFile) readData(def *FitDefinition,")
     fmt.Println("    time_offset uint32, verbose bool) (FitMsg, error) {")
     fmt.Println()
@@ -133,7 +203,7 @@ func toClassName(mesgnum string) string {
 }
 
 func main() {
-    dir, files := processArgs()
+    dir, files, addReadDataFunc := processArgs()
 
     if len(files) == 0 {
         if dir == "" {
@@ -144,6 +214,10 @@ func main() {
                 fmt.Fprintf(os.Stderr, "Cannot read MesgNum: %s\n", err)
             } else {
                 printMessages(dir, list)
+
+                if addReadDataFunc {
+                    printReadData(list)
+                }
             }
         }
     } else {

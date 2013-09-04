@@ -434,9 +434,14 @@ func (msg *Message) PrintFuncs() {
             f.Number(), f.Name(), f.GoType())
     }
     fmt.Println("        default:")
-    fmt.Printf("            errmsg := fmt.Sprintf(\"Bad %s field #%%d\"," +
-        " def.fields[i].num)\n", lowcls)
-    fmt.Println("            return nil, errors.New(errmsg)")
+    if lowcls == "device_info" {
+        fmt.Printf("            fmt.Printf(\"Ignoring %s field #%%d\\n\"," +
+            " def.fields[i].num)\n", lowcls)
+    } else {
+        fmt.Printf("            errmsg := fmt.Sprintf(\"Bad %s field #%%d\"," +
+            " def.fields[i].num)\n", lowcls)
+        fmt.Println("            return nil, errors.New(errmsg)")
+    }
     fmt.Println("        }")
     fmt.Println("    }")
     fmt.Println()
